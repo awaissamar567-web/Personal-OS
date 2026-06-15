@@ -4,8 +4,9 @@ import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as zod from 'zod';
-import { DollarSign, Save, Loader2 } from 'lucide-react';
+import { DollarSign, Save, Loader2, Check } from 'lucide-react';
 import { createSupabaseClient } from '@/lib/supabase-client';
+import { cn } from '@/lib/utils';
 
 const wealthSchema = zod.object({
   month: zod.string(), // Format: YYYY-MM
@@ -28,6 +29,7 @@ export default function WealthForm({ onSuccess }: WealthFormProps) {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const supabase = useMemo(() => createSupabaseClient(), []);
   const currentMonthStr = (() => {
@@ -137,9 +139,24 @@ export default function WealthForm({ onSuccess }: WealthFormProps) {
     if (error) {
       setErrorMsg(error.message);
     } else {
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
       if (onSuccess) onSuccess();
     }
     setLoading(false);
+  };
+
+  const handleClear = () => {
+    reset({
+      month: selectedMonth,
+      net_worth: null,
+      monthly_income: null,
+      business_revenue: null,
+      savings: null,
+      investments: null,
+      expenses: null,
+      notes: '',
+    });
   };
 
   return (
@@ -270,23 +287,42 @@ export default function WealthForm({ onSuccess }: WealthFormProps) {
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={loading || fetching}
-        className="w-full rounded-lg bg-violet-500 py-3 text-sm font-bold text-black hover:bg-violet-400 disabled:opacity-50 disabled:pointer-events-none transition duration-200 flex items-center justify-center gap-2"
-      >
-        {loading ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Saving ledger...</span>
-          </>
-        ) : (
-          <>
-            <Save className="h-4 w-4" />
-            <span>SAVE MONTHLY LEDGER</span>
-          </>
-        )}
-      </button>
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={handleClear}
+          className="px-4 py-3 rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] text-xs font-bold text-neutral-400 hover:text-white hover:bg-neutral-900 transition duration-200"
+        >
+          CLEAR
+        </button>
+        <button
+          type="submit"
+          disabled={loading || fetching}
+          className={cn(
+            "flex-1 rounded-lg py-3 text-xs font-bold transition duration-200 flex items-center justify-center gap-2",
+            success 
+              ? "bg-emerald-600 text-white hover:bg-emerald-500" 
+              : "bg-violet-500 text-black hover:bg-violet-400 disabled:opacity-50 disabled:pointer-events-none"
+          )}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Saving ledger...</span>
+            </>
+          ) : success ? (
+            <>
+              <Check className="h-4 w-4" />
+              <span>SAVED SUCCESSFULLY!</span>
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              <span>SAVE MONTHLY LEDGER</span>
+            </>
+          )}
+        </button>
+      </div>
     </form>
   );
 }

@@ -19,7 +19,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { createSupabaseClient } from '@/lib/supabase-client';
-import { formatInputDate, formatDate } from '@/lib/utils';
+import { formatInputDate, formatDate, getPKTDateString, getYesterdayPKTDateString, getPKTDate7DaysAgoString } from '@/lib/utils';
 import MetricCard from '@/components/ui/MetricCard';
 import SparkLine from '@/components/ui/SparkLine';
 import JournalForm from '@/components/modules/JournalForm';
@@ -28,7 +28,9 @@ import { cn } from '@/lib/utils';
 export default function DashboardPage() {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseClient(), []);
-  const todayStr = formatInputDate(new Date());
+  
+  const [todayStr, setTodayStr] = useState(() => getPKTDateString());
+  const [yesterdayStr, setYesterdayStr] = useState(() => getYesterdayPKTDateString());
 
   const [loading, setLoading] = useState(true);
   const [isMorning, setIsMorning] = useState(true);
@@ -51,11 +53,62 @@ export default function DashboardPage() {
   // Daily To-Do states
   const [todos, setTodos] = useState<any[]>([]);
   const [yesterdayTodos, setYesterdayTodos] = useState<any[]>([]);
+  const [historyTodos, setHistoryTodos] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Group history by date
+  const groupedHistory = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    historyTodos.forEach(todo => {
+      const date = todo.target_date;
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(todo);
+    });
+    // Sort dates in descending order
+    return Object.keys(groups)
+      .sort((a, b) => b.localeCompare(a))
+      .reduce((acc, key) => {
+        acc[key] = groups[key];
+        return acc;
+      }, {} as Record<string, any[]>);
+  }, [historyTodos]);
   
   useEffect(() => {
-    // Dynamic morning/night view check
+    // Dynamic morning/night view check based on local hours
     const hour = new Date().getHours();
     setIsMorning(hour < 12);
+
+    // Schedule automatic reset at midnight PKT
+    const getMsUntilMidnightPKT = () => {
+      const now = new Date();
+      // Format current time in Asia/Karachi timezone
+      const pktString = now.toLocaleString('en-US', { timeZone: 'Asia/Karachi' });
+      const pktDate = new Date(pktString);
+      
+      const midnightPKT = new Date(pktDate);
+      midnightPKT.setHours(24, 0, 0, 0); // Next midnight
+      
+      const diffMs = midnightPKT.getTime() - pktDate.getTime();
+      return diffMs > 0 ? diffMs : 0;
+    };
+
+    const msToMidnight = getMsUntilMidnightPKT();
+    
+    const timeoutId = setTimeout(() => {
+      setTodayStr(getPKTDateString());
+      setYesterdayStr(getYesterdayPKTDateString());
+      
+      const intervalId = setInterval(() => {
+        setTodayStr(getPKTDateString());
+        setYesterdayStr(getYesterdayPKTDateString());
+      }, 24 * 60 * 60 * 1000);
+      
+      return () => clearInterval(intervalId);
+    }, msToMidnight);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const loadDashboardData = async () => {
@@ -67,11 +120,19 @@ export default function DashboardPage() {
         return;
       }
 
+      // Calculate dynamic PKT strings for queries
+      const tStr = getPKTDateString();
+      const yStr = getYesterdayPKTDateString();
+      const h7Str = getPKTDate7DaysAgoString();
+
+      setTodayStr(tStr);
+      setYesterdayStr(yStr);
+
       // 1. Fetch today's health logs
       const { data: todayHealth } = await supabase
         .from('health_logs')
         .select('mood,sleep_hours,steps,water_ml')
-        .eq('date', todayStr)
+        .eq('date', tStr)
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -79,7 +140,7 @@ export default function DashboardPage() {
       const { data: todayWork } = await supabase
         .from('work_logs')
         .select('focus_score')
-        .eq('date', todayStr)
+        .eq('date', tStr)
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -92,22 +153,18 @@ export default function DashboardPage() {
       });
 
       // 3. Fetch sparklines (last 7 days)
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const sevenDaysAgoStr = formatInputDate(sevenDaysAgo);
-
       const { data: last7Health } = await supabase
         .from('health_logs')
         .select('date,steps')
         .eq('user_id', user.id)
-        .gte('date', sevenDaysAgoStr)
+        .gte('date', h7Str)
         .order('date', { ascending: true });
 
       const { data: last7Work } = await supabase
         .from('work_logs')
         .select('date,deep_work_hours')
         .eq('user_id', user.id)
-        .gte('date', sevenDaysAgoStr)
+        .gte('date', h7Str)
         .order('date', { ascending: true });
 
       // Fill array (at least 7 items for sparklines)
@@ -128,7 +185,7 @@ export default function DashboardPage() {
         .from('habit_logs')
         .select('habit_id,completed')
         .eq('user_id', user.id)
-        .eq('date', todayStr);
+        .eq('date', tStr);
 
       const mappedHabits = activeHabits?.map(h => {
         const logged = todayCompletions?.find(l => l.habit_id === h.id);
@@ -157,24 +214,32 @@ export default function DashboardPage() {
         .select('*')
         .eq('user_id', user.id)
         .eq('timeframe', 'daily')
-        .eq('target_date', todayStr)
+        .eq('target_date', tStr)
         .order('created_at', { ascending: true });
 
       setTodos(todayTodos || []);
 
       // 7. Fetch yesterday's daily to-dos
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = formatInputDate(yesterday);
-
       const { data: yestTodos } = await supabase
         .from('goals')
         .select('*')
         .eq('user_id', user.id)
         .eq('timeframe', 'daily')
-        .eq('target_date', yesterdayStr);
+        .eq('target_date', yStr);
 
       setYesterdayTodos(yestTodos || []);
+
+      // 8. Fetch daily to-dos history (past 7 days, excluding today)
+      const { data: histTodos } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('timeframe', 'daily')
+        .lt('target_date', tStr)
+        .gte('target_date', h7Str)
+        .order('target_date', { ascending: false });
+
+      setHistoryTodos(histTodos || []);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -339,164 +404,235 @@ export default function DashboardPage() {
       {/* Main Grid: Left is Time-based views, Right is trends/checklist */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Side: Time-based layout (2 cols wide on desktop) */}
+        {/* Left Side: Layout (2 cols wide on desktop) */}
         <div className="lg:col-span-2 space-y-6">
-          {isMorning ? (
-            /* Morning View */
-            <div className="space-y-6">
-              {/* Today's Goals */}
-              <div className="bg-[#111111] p-6 rounded-xl border border-[#1f1f1f]">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <Award className="h-4 w-4 text-indigo-400" />
-                  <span>Today's Core Goals</span>
-                </h3>
-                {goals.length === 0 ? (
-                  <p className="text-xs text-muted">No active goals found. Go to Vision to set objectives.</p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {goals.map((goal) => (
-                      <div key={goal.id} className="bg-[#0c0c0c] border border-[#1f1f1f] p-4 rounded-lg flex flex-col justify-between">
-                        <div>
-                          <span className="text-[9px] uppercase font-bold text-muted border border-[#1f1f1f] px-1.5 py-0.5 rounded bg-[#111]">
-                            {goal.timeframe}
-                          </span>
-                          <h4 className="text-xs font-bold text-white mt-2 leading-relaxed">{goal.title}</h4>
-                        </div>
-                        <div className="mt-4 flex items-center justify-between text-[10px]">
-                          <span className="text-muted">Progress</span>
-                          <span className="text-white font-bold">{goal.progress}%</span>
-                        </div>
-                      </div>
-                    ))}
+          {/* Today's Goals */}
+          <div className="bg-[#111111] p-6 rounded-xl border border-[#1f1f1f]">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Award className="h-4 w-4 text-indigo-400" />
+              <span>Today's Core Goals</span>
+            </h3>
+            {goals.length === 0 ? (
+              <p className="text-xs text-muted">No active goals found. Go to Vision to set objectives.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {goals.map((goal) => (
+                  <div key={goal.id} className="bg-[#0c0c0c] border border-[#1f1f1f] p-4 rounded-lg flex flex-col justify-between">
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-muted border border-[#1f1f1f] px-1.5 py-0.5 rounded bg-[#111]">
+                        {goal.timeframe}
+                      </span>
+                      <h4 className="text-xs font-bold text-white mt-2 leading-relaxed">{goal.title}</h4>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between text-[10px]">
+                      <span className="text-muted">Progress</span>
+                      <span className="text-white font-bold">{goal.progress}%</span>
+                    </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Health Target & Daily Todo Tracker */}
+          <div className="bg-[#111111] p-6 rounded-xl border border-[#1f1f1f] grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Left Column: Daily To-Dos */}
+            <div className="flex flex-col justify-between space-y-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  <span>Daily Tasks</span>
+                </h3>
+                <p className="text-xs text-muted">Tasks reset daily. Track yesterday's outcomes.</p>
+              </div>
+
+              {/* To-Do List */}
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {todos.length === 0 ? (
+                  <p className="text-xs text-muted italic">No tasks set for today.</p>
+                ) : (
+                  todos.map((todo) => (
+                    <div key={todo.id} className="flex items-center justify-between group bg-[#0c0c0c] border border-[#1f1f1f] hover:border-neutral-700 px-3 py-2 rounded-lg transition duration-150">
+                      <label className="flex items-center gap-2.5 cursor-pointer flex-1">
+                        <input
+                          type="checkbox"
+                          checked={todo.status === 'completed'}
+                          onChange={(e) => toggleTodo(todo.id, e.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-[#1f1f1f] bg-[#0c0c0c] text-emerald-500 focus:ring-0 cursor-pointer"
+                        />
+                        <span className={cn(
+                          "text-xs font-semibold select-none transition-all duration-200",
+                          todo.status === 'completed' ? "text-muted line-through" : "text-white"
+                        )}>
+                          {todo.title}
+                        </span>
+                      </label>
+                      {todo.id.toString().includes('temp') ? null : (
+                        <button
+                          onClick={() => deleteTodo(todo.id)}
+                          className="text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition duration-150 p-1"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))
                 )}
               </div>
 
-              {/* Quick Health Target & Daily Todo Tracker */}
-              <div className="bg-[#111111] p-6 rounded-xl border border-[#1f1f1f] grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Left Column: Daily To-Dos */}
-                <div className="flex flex-col justify-between space-y-4">
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                      <span>Daily Tasks</span>
-                    </h3>
-                    <p className="text-xs text-muted">Tasks reset daily. Track yesterday's outcomes.</p>
-                  </div>
+              {/* Add To-Do Input */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.currentTarget;
+                  const input = form.elements.namedItem('todoInput') as HTMLInputElement;
+                  const val = input.value.trim();
+                  if (val) {
+                    addTodo(val);
+                    input.value = '';
+                  }
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  name="todoInput"
+                  type="text"
+                  placeholder="Add a daily task..."
+                  className="flex-1 rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-3 py-2 text-xs text-white placeholder-neutral-600 outline-none focus:border-emerald-500"
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg bg-white hover:bg-neutral-200 px-3 py-2 text-xs font-bold text-black transition"
+                >
+                  Add
+                </button>
+              </form>
 
-                  {/* To-Do List */}
-                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                    {todos.length === 0 ? (
-                      <p className="text-xs text-muted italic">No tasks set for today.</p>
-                    ) : (
-                      todos.map((todo) => (
-                        <div key={todo.id} className="flex items-center justify-between group bg-[#0c0c0c] border border-[#1f1f1f] hover:border-neutral-700 px-3 py-2 rounded-lg transition duration-150">
-                          <label className="flex items-center gap-2.5 cursor-pointer flex-1">
-                            <input
-                              type="checkbox"
-                              checked={todo.status === 'completed'}
-                              onChange={(e) => toggleTodo(todo.id, e.target.checked)}
-                              className="h-3.5 w-3.5 rounded border-[#1f1f1f] bg-[#0c0c0c] text-emerald-500 focus:ring-0 cursor-pointer"
-                            />
-                            <span className={cn(
-                              "text-xs font-semibold select-none transition-all duration-200",
-                              todo.status === 'completed' ? "text-muted line-through" : "text-white"
-                            )}>
-                              {todo.title}
-                            </span>
-                          </label>
-                          {todo.id.toString().includes('temp') ? null : (
-                            <button
-                              onClick={() => deleteTodo(todo.id)}
-                              className="text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition duration-150 p-1"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      ))
+              {/* Yesterday's Summary */}
+              {yesterdayTodos.length > 0 && (
+                <div className="border-t border-[#1f1f1f] pt-3 text-[10px] space-y-1">
+                  <span className="font-bold text-muted uppercase tracking-wider block">Yesterday's Reflection:</span>
+                  <div className="flex flex-col gap-1.5 mt-1 bg-[#0c0c0c] border border-[#1f1f1f] p-2.5 rounded-lg">
+                    {yesterdayTodos.filter(t => t.status === 'completed').length > 0 && (
+                      <div className="flex items-start gap-1.5 text-emerald-400">
+                        <span className="font-bold shrink-0">✓ Completed:</span>
+                        <span className="text-white font-medium break-all">
+                          {yesterdayTodos.filter(t => t.status === 'completed').map(t => t.title).join(', ')}
+                        </span>
+                      </div>
+                    )}
+                    {yesterdayTodos.filter(t => t.status !== 'completed').length > 0 && (
+                      <div className="flex items-start gap-1.5 text-rose-400">
+                        <span className="font-bold shrink-0">⚠ Missed:</span>
+                        <span className="text-neutral-400 font-medium break-all">
+                          {yesterdayTodos.filter(t => t.status !== 'completed').map(t => t.title).join(', ')}
+                        </span>
+                      </div>
                     )}
                   </div>
-
-                  {/* Add To-Do Input */}
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const form = e.currentTarget;
-                      const input = form.elements.namedItem('todoInput') as HTMLInputElement;
-                      const val = input.value.trim();
-                      if (val) {
-                        addTodo(val);
-                        input.value = '';
-                      }
-                    }}
-                    className="flex gap-2"
-                  >
-                    <input
-                      name="todoInput"
-                      type="text"
-                      placeholder="Add a daily task..."
-                      className="flex-1 rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-3 py-2 text-xs text-white placeholder-neutral-600 outline-none focus:border-emerald-500"
-                    />
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-white hover:bg-neutral-200 px-3 py-2 text-xs font-bold text-black transition"
-                    >
-                      Add
-                    </button>
-                  </form>
-
-                  {/* Yesterday's Summary */}
-                  {yesterdayTodos.length > 0 && (
-                    <div className="border-t border-[#1f1f1f] pt-3 text-[10px] space-y-1">
-                      <span className="font-bold text-muted uppercase tracking-wider block">Yesterday's Reflection:</span>
-                      <div className="flex flex-col gap-1.5 mt-1 bg-[#0c0c0c] border border-[#1f1f1f] p-2.5 rounded-lg">
-                        {yesterdayTodos.filter(t => t.status === 'completed').length > 0 && (
-                          <div className="flex items-start gap-1.5 text-emerald-400">
-                            <span className="font-bold shrink-0">✓ Completed:</span>
-                            <span className="text-white font-medium break-all">
-                              {yesterdayTodos.filter(t => t.status === 'completed').map(t => t.title).join(', ')}
-                            </span>
-                          </div>
-                        )}
-                        {yesterdayTodos.filter(t => t.status !== 'completed').length > 0 && (
-                          <div className="flex items-start gap-1.5 text-rose-400">
-                            <span className="font-bold shrink-0">⚠ Missed:</span>
-                            <span className="text-neutral-400 font-medium break-all">
-                              {yesterdayTodos.filter(t => t.status !== 'completed').map(t => t.title).join(', ')}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
+              )}
+            </div>
 
-                {/* Right Column: Health Targets & Water Intake */}
-                <div className="flex flex-col justify-between space-y-4">
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <Activity className="h-4 w-4 text-emerald-400" />
-                      <span>Health Targets</span>
-                    </h3>
-                    <p className="text-xs text-muted">Daily vitals indicators</p>
-                  </div>
-                  
-                  <div className="bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg p-4 flex justify-between items-center h-full min-h-[80px]">
-                    <div>
-                      <span className="text-[10px] text-muted font-bold uppercase block">Water Intake</span>
-                      <span className="text-sm font-bold text-emerald-400 mt-1 block">{metrics.water} / 3000 ml</span>
-                    </div>
-                    <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
-                  </div>
+            {/* Right Column: Health Targets & Water Intake */}
+            <div className="flex flex-col justify-between space-y-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-emerald-400" />
+                  <span>Health Targets</span>
+                </h3>
+                <p className="text-xs text-muted">Daily vitals indicators</p>
+              </div>
+              
+              <div className="bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg p-4 flex justify-between items-center h-full min-h-[80px]">
+                <div>
+                  <span className="text-[10px] text-muted font-bold uppercase block">Water Intake</span>
+                  <span className="text-sm font-bold text-emerald-400 mt-1 block">{metrics.water} / 3000 ml</span>
                 </div>
-
+                <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
               </div>
             </div>
-          ) : (
-            /* Night View: Reflection form */
-            <div className="space-y-6">
+
+          </div>
+
+          {/* Daily Tasks History Log */}
+          {historyTodos.length > 0 && (
+            <div className="bg-[#111111] p-6 rounded-xl border border-[#1f1f1f] shadow-lg">
+              <button
+                type="button"
+                onClick={() => setShowHistory(!showHistory)}
+                className="w-full flex items-center justify-between text-sm font-bold text-white uppercase tracking-wider group outline-none"
+              >
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-indigo-400" />
+                  <span>Daily Tasks History Log</span>
+                </div>
+                <span className="text-xs text-muted group-hover:text-white transition duration-150 font-bold">
+                  {showHistory ? 'HIDE HISTORY' : 'SHOW PAST 7 DAYS'}
+                </span>
+              </button>
+
+              {showHistory && (
+                <div className="mt-6 space-y-4 border-t border-[#1f1f1f] pt-4">
+                  {Object.entries(groupedHistory).map(([date, dayTodos]) => {
+                    const completed = dayTodos.filter(t => t.status === 'completed');
+                    const missed = dayTodos.filter(t => t.status !== 'completed');
+                    const percent = Math.round((completed.length / dayTodos.length) * 100) || 0;
+
+                    return (
+                      <div key={date} className="bg-[#0c0c0c] border border-[#1f1f1f] p-4 rounded-lg space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-white">{formatDate(date)}</span>
+                          <span className={cn(
+                            "text-[10px] font-bold px-2 py-0.5 rounded border",
+                            percent === 100
+                              ? "bg-emerald-950/20 border-emerald-900/30 text-emerald-400"
+                              : percent >= 50
+                              ? "bg-amber-950/20 border-amber-900/30 text-amber-400"
+                              : "bg-rose-950/20 border-rose-900/30 text-rose-400"
+                          )}>
+                            {completed.length}/{dayTodos.length} Completed ({percent}%)
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-1">
+                          {completed.length > 0 && (
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">✓ Accomplished:</span>
+                              <ul className="list-disc list-inside text-neutral-300 space-y-0.5 font-medium">
+                                {completed.map(t => (
+                                  <li key={t.id} className="break-all">{t.title}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {missed.length > 0 && (
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-rose-500">⚠ Missed:</span>
+                              <ul className="list-disc list-inside text-neutral-500 space-y-0.5 font-medium">
+                                {missed.map(t => (
+                                  <li key={t.id} className="line-through break-all">{t.title}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Night Reflection Journal */}
+          {!isMorning && (
+            <div className="bg-[#111111] p-6 rounded-xl border border-[#1f1f1f] space-y-4">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Moon className="h-4 w-4 text-indigo-400" />
+                <span>Night Reflection</span>
+              </h3>
               <JournalForm onSuccess={loadDashboardData} initialType="night" />
             </div>
           )}

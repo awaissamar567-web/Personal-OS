@@ -42,3 +42,63 @@ export function formatInputDate(date: Date = new Date()): string {
   const year = date.getFullYear();
   return `${year}-${month}-${day}`;
 }
+
+// Get current date string in PKT timezone (Asia/Karachi) - returns YYYY-MM-DD
+export function getPKTDateString(): string {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Karachi',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(new Date());
+}
+
+// Get yesterday's date string in PKT timezone (Asia/Karachi) - returns YYYY-MM-DD
+export function getYesterdayPKTDateString(): string {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Karachi',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric'
+  });
+  const pktDateStr = formatter.format(new Date());
+  const pktDate = new Date(pktDateStr);
+  pktDate.setDate(pktDate.getDate() - 1);
+  
+  const formatterENCA = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Karachi',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatterENCA.format(pktDate);
+}
+
+// Get date 7 days ago in PKT timezone (Asia/Karachi) - returns YYYY-MM-DD
+export function getPKTDate7DaysAgoString(): string {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Karachi',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric'
+  });
+  const pktDateStr = formatter.format(new Date());
+  const pktDate = new Date(pktDateStr);
+  pktDate.setDate(pktDate.getDate() - 7);
+  
+  const formatterENCA = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Karachi',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatterENCA.format(pktDate);
+}
+
