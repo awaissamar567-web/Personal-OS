@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ffffff;
+  --card-bg: #111111;
+  --card-border: #1f1f1f;
+  
+  --secondary: #888888;
+  --muted: #555555;
+
+  /* Accent glow colors */
+  --health-glow: 0 0 20px rgba(16, 185, 129, 0.2);
+  --wealth-glow: 0 0 20px rgba(139, 92, 246, 0.2);
+  --work-glow: 0 0 20px rgba(59, 130, 246, 0.2);
+  --growth-glow: 0 0 20px rgba(245, 158, 11, 0.2);
+  --relationships-glow: 0 0 20px rgba(244, 63, 94, 0.2);
+  --vision-glow: 0 0 20px rgba(99, 102, 241, 0.2);
+  
+  --health-color: #10b981;
+  --wealth-color: #8b5cf6;
+  --work-color: #3b82f6;
+  --growth-color: #f59e0b;
+  --relationships-color: #f43f5e;
+  --vision-color: #6366f1;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Custom Base Utilities */
+.bg-dashboard {
+  background-color: var(--background);
+}
+
+.text-secondary {
+  color: var(--secondary);
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+/* Base card layout */
+.base-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Color-coded Card Glows */
+.glow-health:hover, .glow-health.active {
+  box-shadow: var(--health-glow);
+  border-color: var(--health-color);
+}
+.glow-wealth:hover, .glow-wealth.active {
+  box-shadow: var(--wealth-glow);
+  border-color: var(--wealth-color);
+}
+.glow-work:hover, .glow-work.active {
+  box-shadow: var(--work-glow);
+  border-color: var(--work-color);
+}
+.glow-growth:hover, .glow-growth.active {
+  box-shadow: var(--growth-glow);
+  border-color: var(--growth-color);
+}
+.glow-relationships:hover, .glow-relationships.active {
+  box-shadow: var(--relationships-glow);
+  border-color: var(--relationships-color);
+}
+.glow-vision:hover, .glow-vision.active {
+  box-shadow: var(--vision-glow);
+  border-color: var(--vision-color);
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary);
+}
+
+/* Heatmap Grid Styles */
+.heatmap-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  transition: transform 0.1s ease;
+}
+.heatmap-cell:hover {
+  transform: scale(1.2);
+  z-index: 10;
+}
