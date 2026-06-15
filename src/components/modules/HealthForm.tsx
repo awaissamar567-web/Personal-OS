@@ -149,6 +149,19 @@ export default function HealthForm({ onSuccess }: HealthFormProps) {
     } else {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
+      reset({
+        date: values.date,
+        weight_kg: null,
+        body_fat_pct: null,
+        sleep_hours: null,
+        water_ml: null,
+        calories: null,
+        steps: null,
+        gym_workout: false,
+        mood: 5,
+        energy: 5,
+        notes: '',
+      });
       if (onSuccess) onSuccess();
     }
     setLoading(false);

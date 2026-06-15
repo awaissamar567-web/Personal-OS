@@ -151,6 +151,15 @@ export default function JournalForm({ onSuccess, initialType = 'morning' }: Jour
     } else {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
+      reset({
+        date: values.date,
+        type: values.type,
+        content: '',
+        wins: '',
+        mistakes: '',
+        mood: 5,
+        progress_score: 5,
+      });
       if (onSuccess) onSuccess();
     }
     setLoading(false);

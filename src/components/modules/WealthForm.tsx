@@ -141,6 +141,16 @@ export default function WealthForm({ onSuccess }: WealthFormProps) {
     } else {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
+      reset({
+        month: values.month,
+        net_worth: null,
+        monthly_income: null,
+        business_revenue: null,
+        savings: null,
+        investments: null,
+        expenses: null,
+        notes: '',
+      });
       if (onSuccess) onSuccess();
     }
     setLoading(false);

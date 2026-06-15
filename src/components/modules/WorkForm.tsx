@@ -126,6 +126,15 @@ export default function WorkForm({ onSuccess }: WorkFormProps) {
     } else {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
+      reset({
+        date: values.date,
+        deep_work_hours: null,
+        tasks_completed: null,
+        focus_score: 5,
+        learning_hours: null,
+        weekly_goals_met: false,
+        notes: '',
+      });
       if (onSuccess) onSuccess();
     }
     setLoading(false);
