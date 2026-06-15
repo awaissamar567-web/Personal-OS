@@ -216,8 +216,9 @@ export default function HealthForm({ onSuccess }: HealthFormProps) {
             type="number"
             step="0.1"
             placeholder="e.g. 78.5"
-            onChange={(e) => setValue('weight_kg', e.target.value ? parseFloat(e.target.value) : null)}
-            value={watch('weight_kg') ?? ''}
+            {...register('weight_kg', {
+              setValueAs: (v) => v === "" ? null : parseFloat(v)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-emerald-500"
           />
         </div>
@@ -231,8 +232,9 @@ export default function HealthForm({ onSuccess }: HealthFormProps) {
             type="number"
             step="0.1"
             placeholder="e.g. 15.4"
-            onChange={(e) => setValue('body_fat_pct', e.target.value ? parseFloat(e.target.value) : null)}
-            value={watch('body_fat_pct') ?? ''}
+            {...register('body_fat_pct', {
+              setValueAs: (v) => v === "" ? null : parseFloat(v)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-emerald-500"
           />
         </div>
@@ -246,8 +248,9 @@ export default function HealthForm({ onSuccess }: HealthFormProps) {
             type="number"
             step="0.5"
             placeholder="e.g. 7.5"
-            onChange={(e) => setValue('sleep_hours', e.target.value ? parseFloat(e.target.value) : null)}
-            value={watch('sleep_hours') ?? ''}
+            {...register('sleep_hours', {
+              setValueAs: (v) => v === "" ? null : parseFloat(v)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-emerald-500"
           />
         </div>
@@ -260,8 +263,9 @@ export default function HealthForm({ onSuccess }: HealthFormProps) {
           <input
             type="number"
             placeholder="e.g. 2500"
-            onChange={(e) => setValue('water_ml', e.target.value ? parseInt(e.target.value) : null)}
-            value={watch('water_ml') ?? ''}
+            {...register('water_ml', {
+              setValueAs: (v) => v === "" ? null : parseInt(v, 10)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-emerald-500"
           />
         </div>
@@ -274,8 +278,9 @@ export default function HealthForm({ onSuccess }: HealthFormProps) {
           <input
             type="number"
             placeholder="e.g. 2100"
-            onChange={(e) => setValue('calories', e.target.value ? parseInt(e.target.value) : null)}
-            value={watch('calories') ?? ''}
+            {...register('calories', {
+              setValueAs: (v) => v === "" ? null : parseInt(v, 10)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-emerald-500"
           />
         </div>
@@ -288,8 +293,9 @@ export default function HealthForm({ onSuccess }: HealthFormProps) {
           <input
             type="number"
             placeholder="e.g. 10000"
-            onChange={(e) => setValue('steps', e.target.value ? parseInt(e.target.value) : null)}
-            value={watch('steps') ?? ''}
+            {...register('steps', {
+              setValueAs: (v) => v === "" ? null : parseInt(v, 10)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-emerald-500"
           />
         </div>

@@ -185,8 +185,9 @@ export default function WorkForm({ onSuccess }: WorkFormProps) {
             type="number"
             step="0.5"
             placeholder="e.g. 4.5"
-            onChange={(e) => setValue('deep_work_hours', e.target.value ? parseFloat(e.target.value) : null)}
-            value={watch('deep_work_hours') ?? ''}
+            {...register('deep_work_hours', {
+              setValueAs: (v) => v === "" ? null : parseFloat(v)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500"
           />
         </div>
@@ -199,8 +200,9 @@ export default function WorkForm({ onSuccess }: WorkFormProps) {
           <input
             type="number"
             placeholder="e.g. 8"
-            onChange={(e) => setValue('tasks_completed', e.target.value ? parseInt(e.target.value) : null)}
-            value={watch('tasks_completed') ?? ''}
+            {...register('tasks_completed', {
+              setValueAs: (v) => v === "" ? null : parseInt(v, 10)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500"
           />
         </div>
@@ -214,8 +216,9 @@ export default function WorkForm({ onSuccess }: WorkFormProps) {
             type="number"
             step="0.5"
             placeholder="e.g. 1.5"
-            onChange={(e) => setValue('learning_hours', e.target.value ? parseFloat(e.target.value) : null)}
-            value={watch('learning_hours') ?? ''}
+            {...register('learning_hours', {
+              setValueAs: (v) => v === "" ? null : parseFloat(v)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500"
           />
         </div>

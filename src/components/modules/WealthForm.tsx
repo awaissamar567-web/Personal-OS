@@ -201,8 +201,9 @@ export default function WealthForm({ onSuccess }: WealthFormProps) {
           <input
             type="number"
             placeholder="e.g. 5000000"
-            onChange={(e) => setValue('net_worth', e.target.value ? parseFloat(e.target.value) : null)}
-            value={watch('net_worth') ?? ''}
+            {...register('net_worth', {
+              setValueAs: (v) => v === "" ? null : parseFloat(v)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-violet-500"
           />
         </div>
@@ -215,8 +216,9 @@ export default function WealthForm({ onSuccess }: WealthFormProps) {
           <input
             type="number"
             placeholder="e.g. 250000"
-            onChange={(e) => setValue('monthly_income', e.target.value ? parseFloat(e.target.value) : null)}
-            value={watch('monthly_income') ?? ''}
+            {...register('monthly_income', {
+              setValueAs: (v) => v === "" ? null : parseFloat(v)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-violet-500"
           />
         </div>
@@ -229,8 +231,9 @@ export default function WealthForm({ onSuccess }: WealthFormProps) {
           <input
             type="number"
             placeholder="e.g. 150000"
-            onChange={(e) => setValue('business_revenue', e.target.value ? parseFloat(e.target.value) : null)}
-            value={watch('business_revenue') ?? ''}
+            {...register('business_revenue', {
+              setValueAs: (v) => v === "" ? null : parseFloat(v)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-violet-500"
           />
         </div>
@@ -243,8 +246,9 @@ export default function WealthForm({ onSuccess }: WealthFormProps) {
           <input
             type="number"
             placeholder="e.g. 50000"
-            onChange={(e) => setValue('savings', e.target.value ? parseFloat(e.target.value) : null)}
-            value={watch('savings') ?? ''}
+            {...register('savings', {
+              setValueAs: (v) => v === "" ? null : parseFloat(v)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-violet-500"
           />
         </div>
@@ -257,8 +261,9 @@ export default function WealthForm({ onSuccess }: WealthFormProps) {
           <input
             type="number"
             placeholder="e.g. 1200000"
-            onChange={(e) => setValue('investments', e.target.value ? parseFloat(e.target.value) : null)}
-            value={watch('investments') ?? ''}
+            {...register('investments', {
+              setValueAs: (v) => v === "" ? null : parseFloat(v)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-violet-500"
           />
         </div>
@@ -271,8 +276,9 @@ export default function WealthForm({ onSuccess }: WealthFormProps) {
           <input
             type="number"
             placeholder="e.g. 100000"
-            onChange={(e) => setValue('expenses', e.target.value ? parseFloat(e.target.value) : null)}
-            value={watch('expenses') ?? ''}
+            {...register('expenses', {
+              setValueAs: (v) => v === "" ? null : parseFloat(v)
+            })}
             className="rounded-lg border border-[#1f1f1f] bg-[#0c0c0c] px-4 py-2.5 text-sm text-white outline-none focus:border-violet-500"
           />
         </div>
